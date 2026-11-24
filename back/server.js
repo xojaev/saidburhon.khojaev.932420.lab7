@@ -5,12 +5,10 @@ const sqlite3 = require('sqlite3').verbose(); // 1. Подключаем SQLite
 const app = express();
 const PORT = 3000;
 
-// Включаем парсинг JSON (нужно для POST-запросов в 7-й лабе)
+
 app.use(express.json());
 
-// ==========================================
-// СТАТИКА ИЗ 6 ЛАБЫ (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ)
-// ==========================================
+
 app.use(express.static(path.join(__dirname, '../src')));
 app.use('/img', express.static(path.join(__dirname, '../img')));
 app.use(express.static(__dirname)); 
@@ -50,9 +48,7 @@ app.get('/api/rates/:currency', (req, res) => {
     }
 });
 
-// ==========================================
-// БАЗА ДАННЫХ И БИЛЕТЫ (НОВОЕ ДЛЯ 7 ЛАБЫ)
-// ==========================================
+
 
 // 2. Создаем файл базы данных
 const db = new sqlite3.Database('./tickets.db', (err) => {
@@ -60,7 +56,7 @@ const db = new sqlite3.Database('./tickets.db', (err) => {
     else console.log("Подключено к базе данных SQLite.");
 });
 
-// 3. Создаем таблицу билетов
+
 db.run(`
     CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +68,6 @@ db.run(`
 `, (err) => {
     if (err) console.error(err.message);
     
-    // Добавляем тестовые данные, если таблица пустая
     db.get("SELECT COUNT(*) as count FROM tickets", (err, row) => {
         if (row.count === 0) {
             const insert = `INSERT INTO tickets (event_id, type, price, remaining) VALUES (?, ?, ?, ?)`;
@@ -84,7 +79,7 @@ db.run(`
     });
 });
 
-// 4. GET: Получить билеты (с фильтрацией ?event_id=)
+
 app.get('/api/tickets', (req, res) => {
     const eventId = req.query.event_id;
     let sql = "SELECT * FROM tickets";
@@ -101,7 +96,7 @@ app.get('/api/tickets', (req, res) => {
     });
 });
 
-// 5. POST: Создать билет
+
 app.post('/api/tickets', (req, res) => {
     const { event_id, type, price, remaining } = req.body;
     
@@ -116,7 +111,7 @@ app.post('/api/tickets', (req, res) => {
     });
 });
 
-// 6. PUT: Покупка билета (Транзакция и уменьшение остатка)
+
 app.put('/api/tickets/:id/buy', (req, res) => {
     const ticketId = req.params.id;
     const countToBuy = req.body.count || 1;
@@ -132,9 +127,9 @@ app.put('/api/tickets/:id/buy', (req, res) => {
 
             const newRemaining = row.remaining - countToBuy;
 
-            // Ошибка: остаток уходит в минус
+            
             if (newRemaining < 0) {
-                db.run("ROLLBACK"); // Откат транзакции
+                db.run("ROLLBACK"); 
                 return res.status(400).json({ 
                     error: `Недостаточно билетов. В наличии: ${row.remaining}` 
                 });
@@ -145,14 +140,14 @@ app.put('/api/tickets/:id/buy', (req, res) => {
                     db.run("ROLLBACK");
                     return res.status(500).json({ error: err.message });
                 }
-                db.run("COMMIT"); // Фиксируем изменения
+                db.run("COMMIT");
                 res.json({ message: "Покупка успешна", remaining: newRemaining });
             });
         });
     });
 });
 
-// 7. DELETE: Удалить билет
+
 app.delete('/api/tickets/:id', (req, res) => {
     const id = req.params.id;
     db.run("DELETE FROM tickets WHERE id = ?", [id], function(err) {
@@ -162,9 +157,7 @@ app.delete('/api/tickets/:id', (req, res) => {
     });
 });
 
-// ==========================================
-// ЗАПУСК СЕРВЕРА
-// ==========================================
+
 app.listen(PORT, () => {
     console.log(`Сервер запущен: http://localhost:${PORT}`);
 });
